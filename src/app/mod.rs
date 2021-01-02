@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use rocket::Outcome;
 use rocket::response::Redirect;
-use rocket::request::{self, Request, FromRequest, Form};
+use rocket::request::{self, Request, FromRequest, FromForm, Form};
 
 use rocket::http::Status;
 use rocket::http::hyper::header::Basic;
@@ -45,22 +45,20 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 }
 
 // TODO: Validate "host" header and use in cominbation with user/pass
-fn auth_validate(host: String, input: String) -> bool {
+fn auth_validate(_host: String, input: String) -> bool {
     // Validate "Basic" auth type is used (Bearer not supported)
-    let authHeader: Vec<&str> = input.split(' ').collect();
-    if authHeader.get(0) != Some(&"Basic") || authHeader.get(1).is_none() {
+    let auth_header: Vec<&str> = input.split(' ').collect();
+    if auth_header.get(0) != Some(&"Basic") || auth_header.get(1).is_none() {
         return false;
     }
 
     // Validate base64 encoded value matches accepted logins
-    if let Ok(basic) = Basic::from_str(authHeader[1]) {
+    if let Ok(basic) = Basic::from_str(auth_header[1]) {
         return user_validate(&String::from(""), &basic.username, &basic.password.unwrap());
     }
 
     false
 }
-
-const LIMIT: u64 = 256;
 
 #[derive(FromForm)]
 pub struct AuthUser {
@@ -71,7 +69,9 @@ pub struct AuthUser {
 }
 
 fn user_validate(user: &String, pass: &String, host: &String) -> bool {
-    if user == &String::from("admin") && pass == &String::from("pass123") {
+    if user.as_str() == "admin"
+        && pass.as_str() == "pass123"
+        && host.as_str() == "example.club" {
         return true;
     }
 
@@ -79,7 +79,7 @@ fn user_validate(user: &String, pass: &String, host: &String) -> bool {
 }
 
 #[get("/validate")]
-pub fn validate(auth: Auth) -> &'static str {
+pub fn validate(_auth: Auth) -> &'static str {
     "Authorized"
 }
 
@@ -96,7 +96,7 @@ pub fn login(url: String) -> Template {
 
     // TODO: Based on request headers
     data.insert("host", "example.club");
-    data.insert("redirect", "success.example.club");
+    data.insert("redirect", url.as_str());
 
     // Values to render: url, urlHost
     Template::render("login", &data)
@@ -105,8 +105,8 @@ pub fn login(url: String) -> Template {
 #[post("/login", data = "<input>")]
 pub fn validate_login(input: Form<AuthUser>) -> Redirect {
     if user_validate(&input.user, &input.pass, &input.host) {
-        // Redirect::to(input.redirect.as_str())
-        Redirect::to("/login?success=1")
+        Redirect::to(format!("{}", input.redirect))
+        // Redirect::to("/login?success=1")
     } else {
         Redirect::to("/login?failure=1")
     }

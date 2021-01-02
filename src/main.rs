@@ -30,7 +30,10 @@ fn main() -> Result<(), ioError> {
 
     rocket::custom(rocket_conf)
         .attach(Template::fairing())
-        .mount("/", routes![app::index, app::validate, app::login, app::logout]).launch();
+        .mount("/",
+            routes![app::index, app::validate,
+            app::login, app::validate_login, app::logout]
+        ).launch();
 
     Ok(())
 }
