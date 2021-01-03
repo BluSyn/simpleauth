@@ -1,4 +1,5 @@
 #!/bin/sh
 
 # Pass through arguments
-exec /app/simpleauth "${@}"
+cd /app
+exec simpleauth "${@}"
