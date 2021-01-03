@@ -1,7 +1,7 @@
 ### BUILDING APP ###
 # FROM rust:1.46 as build
 # RUN cargo build --release
-FROM rust:1.46 as build
+FROM rust:1.49-alpine as build
 
 # Build time options to avoid dpkg warnings and help with reproducible builds.
 ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8 TZ=UTC TERM=xterm-256color
