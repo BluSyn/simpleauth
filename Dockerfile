@@ -4,7 +4,8 @@
 
 ### RUNNING APP ###
 FROM alpine:latest
-ENTRYPOINT ["/app/simpleauth"]
+ENTRYPOINT ["/app/entrypoint.sh"]
 EXPOSE 3141
 
+COPY entrypoint.sh /app/entrypoint.sh
 COPY target/release/simpleauth /app/simpleauth
