@@ -24,4 +24,4 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY entrypoint.sh /app/entrypoint.sh
-COPY --from=build app/target/release/simpleauth .
+COPY --from=build /app/target/release/simpleauth /app/simpleauth
