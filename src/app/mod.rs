@@ -124,7 +124,7 @@ pub fn validate_login(input: LenientForm<AuthUser>) -> Redirect {
     println!("Validating Login: {}, {}", &input.user, &input.host);
 
     if user_validate(&input.user, &input.pass, &input.host) {
-        Redirect::to(format!("{}", &input.redirect))
+        Redirect::to(String::from(&input.redirect))
     } else {
         Redirect::to(uri!(login: url = &input.redirect, error = "Invalid Login"))
     }
