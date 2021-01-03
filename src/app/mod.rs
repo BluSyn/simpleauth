@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use rocket::Outcome;
 use rocket::response::Redirect;
-use rocket::request::{self, Request, FromRequest, FromForm, Form};
+use rocket::request::{self, Request, FromRequest, FromForm, LenientForm};
 
 use rocket::http::Status;
 use rocket::http::hyper::header::Basic;
@@ -90,25 +90,30 @@ pub fn index() -> Template {
     Template::render("index", data)
 }
 
-#[get("/login?<url>")]
-pub fn login(url: String) -> Template {
+#[get("/login?<url>&<error>")]
+pub fn login(url: String, error: Option<String>) -> Template {
     let mut data = HashMap::new();
 
     // TODO: Based on request headers
     data.insert("host", "example.club");
     data.insert("redirect", url.as_str());
 
+    if let Some(msg) = &error {
+        data.insert("error", msg);
+    }
+
     // Values to render: url, urlHost
     Template::render("login", &data)
 }
 
 #[post("/login", data = "<input>")]
-pub fn validate_login(input: Form<AuthUser>) -> Redirect {
+pub fn validate_login(input: LenientForm<AuthUser>) -> Redirect {
+    println!("Validating Login: {}, {}", &input.user, &input.host);
+
     if user_validate(&input.user, &input.pass, &input.host) {
-        Redirect::to(format!("{}", input.redirect))
-        // Redirect::to("/login?success=1")
+        Redirect::to(format!("{}", &input.redirect))
     } else {
-        Redirect::to("/login?failure=1")
+        Redirect::to(uri!(login: url = &input.redirect, error = "Invalid Login"))
     }
 }
 
