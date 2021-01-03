@@ -11,6 +11,7 @@ use rocket::request::{self, Request, FromRequest, FromForm, LenientForm};
 
 use rocket::http::Status;
 use rocket::http::hyper::header::Basic;
+use rocket::http::uri::{Uri, Absolute};
 
 use rocket_contrib::templates::Template;
 
@@ -124,7 +125,21 @@ pub fn validate_login(input: LenientForm<AuthUser>) -> Redirect {
     println!("Validating Login: {}, {}", &input.user, &input.host);
 
     if user_validate(&input.user, &input.pass, &input.host) {
-        Redirect::to(String::from(&input.redirect))
+        // Parsing redirect URL to include HTTP basic auth in header
+        let redirect = String::from(&input.redirect);
+        let parse = Uri::parse(&redirect).unwrap();
+        let parsed = parse.absolute().unwrap();
+
+        // {scheme}://{user}:{pass}@{host}/{path}
+        let build_uri = format!("{}://{}:{}@{}{}",
+            parsed.scheme(),
+            &input.user,
+            &input.pass,
+            parsed.authority().unwrap().host(),
+            parsed.origin().unwrap().path());
+        let auth_uri = Absolute::parse(&build_uri).unwrap().to_string();
+
+        Redirect::to(auth_uri)
     } else {
         Redirect::to(uri!(login: url = &input.redirect, error = "Invalid Login"))
     }
