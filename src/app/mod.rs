@@ -84,11 +84,11 @@ fn user_validate(user: &String, pass: &String, host: &String) -> bool {
     if user.as_str() == "admin"
         && pass.as_str() == "pass123"
         && domain_part.as_str() == "example.club" {
-        println!("Valid User: {} ({} / {})", &user, &host, &domain_part);
+        println!("Valid Auth: {} ({} / {})", &user, &host, &domain_part);
         return true;
     }
 
-    println!("Invalid User: {} ({} / {})", &user, &host, &domain_part);
+    println!("Invalid Auth: {} ({} / {})", &user, &host, &domain_part);
     false
 }
 
@@ -130,6 +130,7 @@ pub fn validate_login(input: LenientForm<AuthUser>) -> Redirect {
         let parse = Uri::parse(&redirect).unwrap();
         let parsed = parse.absolute().unwrap();
 
+        println!("Parsing redirect: {:?}", parsed);
         // {scheme}://{user}:{pass}@{host}/{path}
         let build_uri = format!("{}://{}:{}@{}{}",
             parsed.scheme(),
