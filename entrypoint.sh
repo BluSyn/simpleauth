@@ -2,4 +2,4 @@
 
 # Pass through arguments
 cd /app
-exec simpleauth "${@}"
+exec ./simpleauth "${@}"

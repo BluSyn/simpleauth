@@ -24,6 +24,5 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY entrypoint.sh /app/entrypoint.sh
-COPY Rocket.toml /app/Rocket.toml
 COPY templates /app/templates
 COPY --from=build /app/target/release/simpleauth /app/simpleauth
