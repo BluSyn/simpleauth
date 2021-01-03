@@ -11,7 +11,7 @@ use rocket::request::{self, Request, FromRequest, FromForm, LenientForm};
 
 use rocket::http::Status;
 use rocket::http::hyper::header::Basic;
-use rocket::http::uri::{Uri, Absolute};
+use rocket::http::uri::{Uri, Absolute, Origin};
 
 use rocket_contrib::templates::Template;
 
@@ -130,14 +130,13 @@ pub fn validate_login(input: LenientForm<AuthUser>) -> Redirect {
         let parse = Uri::parse(&redirect).unwrap();
         let parsed = parse.absolute().unwrap();
 
-        println!("Parsing redirect: {:?}", parsed);
         // {scheme}://{user}:{pass}@{host}/{path}
         let build_uri = format!("{}://{}:{}@{}{}",
             parsed.scheme(),
             &input.user,
             &input.pass,
             parsed.authority().unwrap().host(),
-            parsed.origin().unwrap().path());
+            parsed.origin().unwrap_or(&Origin::parse("/").unwrap()).path());
         let auth_uri = Absolute::parse(&build_uri).unwrap().to_string();
 
         Redirect::to(auth_uri)
