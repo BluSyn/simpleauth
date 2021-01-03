@@ -10,8 +10,6 @@ edition = "2018"
 lazy_static = "1.4.0"
 structopt = "0.3"
 rocket = "0.4.6"
-rand = "0.7"
-serde = { version = "1.0", features = ["derive"] }
 
 [dependencies.rocket_contrib]
 version = "0.4.6"

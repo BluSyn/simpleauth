@@ -69,14 +69,25 @@ pub struct AuthUser {
 }
 
 fn user_validate(user: &String, pass: &String, host: &String) -> bool {
+    // Parse host domain
+    // magic.simple.foo.example.club -> example.club
+    // TODO: This is fairly dumb manipulation, should make this more robust
+    let host_url: Vec<&str> = host.rsplitn(3, ".").collect();
+    let mut domain_part = String::from("");
+    if host_url.get(1).is_some() {
+        domain_part.push_str(host_url[1]);
+        domain_part.push_str(".");
+    }
+    domain_part.push_str(host_url[0]);
+
     if user.as_str() == "admin"
         && pass.as_str() == "pass123"
-        && host.as_str() == "example.club" {
-        println!("Valid User: {} ({})", &user, &host);
+        && domain_part.as_str() == "example.club" {
+        println!("Valid User: {} ({} / {})", &user, &host, &domain_part);
         return true;
     }
 
-    println!("Invalid User: {} ({})", &user, &host);
+    println!("Invalid User: {} ({} / {})", &user, &host, &domain_part);
     false
 }
 
