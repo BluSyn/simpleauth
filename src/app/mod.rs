@@ -45,7 +45,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 }
 
 // TODO: Validate "host" header and use in cominbation with user/pass
-fn auth_validate(_host: String, input: String) -> bool {
+fn auth_validate(host: String, input: String) -> bool {
     // Validate "Basic" auth type is used (Bearer not supported)
     let auth_header: Vec<&str> = input.split(' ').collect();
     if auth_header.get(0) != Some(&"Basic") || auth_header.get(1).is_none() {
@@ -54,7 +54,7 @@ fn auth_validate(_host: String, input: String) -> bool {
 
     // Validate base64 encoded value matches accepted logins
     if let Ok(basic) = Basic::from_str(auth_header[1]) {
-        return user_validate(&String::from(""), &basic.username, &basic.password.unwrap());
+        return user_validate(&basic.username, &basic.password.unwrap(), &host);
     }
 
     false
@@ -72,9 +72,11 @@ fn user_validate(user: &String, pass: &String, host: &String) -> bool {
     if user.as_str() == "admin"
         && pass.as_str() == "pass123"
         && host.as_str() == "example.club" {
+        println!("Valid User: {} ({})", &user, &host);
         return true;
     }
 
+    println!("Invalid User: {} ({})", &user, &host);
     false
 }
 
