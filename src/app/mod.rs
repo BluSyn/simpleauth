@@ -6,23 +6,40 @@ use std::str::FromStr;
 use std::collections::HashMap;
 
 use rocket::Outcome;
-use rocket::response::Redirect;
+use rocket::response::{self, Redirect, Response, Responder};
 use rocket::request::{self, Request, FromRequest, FromForm, LenientForm};
 
-use rocket::http::Status;
+use rocket::http::{Status, Cookie, Cookies};
 use rocket::http::hyper::header::Basic;
-use rocket::http::uri::{Uri, Absolute, Origin};
 
 use rocket_contrib::templates::Template;
 
 pub mod config;
 
-pub struct Auth(String);
+pub struct Auth(&'static str);
+
+// TODO: Config option
+static COOKIE_NAME: &str = "simple-auth";
 
 #[derive(Debug)]
 pub enum AuthError {
     Invalid,
     Missing,
+}
+
+// Get auth string can come from Authorization HTTP header
+// or from previously set http cookie (COOKIE_NAME)
+fn auth_from_request(request: &Request) -> Option<String> {
+    let auth = request.headers().get_one("authorization");
+    let cookies = request.cookies();
+    let auth_cookie = cookies.get(COOKIE_NAME);
+    if auth.is_some() {
+        Some(String::from(auth.unwrap()))
+    } else if auth_cookie.is_some() {
+        Some(String::from(auth_cookie.unwrap().value()))
+    } else {
+        None
+    }
 }
 
 // Implement custom guard for validate request
@@ -33,15 +50,41 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
     fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
         let head = request.headers();
         let host = head.get_one("host");
-        let auth = head.get_one("authorization");
+        let auth = auth_from_request(&request);
 
         if host.is_none() || auth.is_none() {
             Outcome::Failure((Status::Unauthorized, AuthError::Missing))
-        } else if auth_validate(String::from(host.unwrap()), String::from(auth.unwrap())) {
-            Outcome::Success(Auth(String::from("")))
+        } else if auth_validate(String::from(host.unwrap()), auth.unwrap()) {
+            Outcome::Success(Auth("Authorized"))
         } else {
             Outcome::Failure((Status::Unauthorized, AuthError::Invalid))
         }
+    }
+}
+
+// Custom responder for validation endpoint
+// returns custom headers + sets cookies
+// Note: This custom responder is only used on request validation if Outcome::Success
+impl<'a> Responder<'a> for Auth {
+    fn respond_to(self, request: &Request) -> response::Result<'a> {
+        let mut resp = Response::build();
+
+        // Set cookie if it does not exist
+        if request.cookies().get(COOKIE_NAME).is_none() {
+            let auth = String::from(request.headers().get_one("authorization").unwrap());
+            let cookie = Cookie::build(COOKIE_NAME, auth.clone())
+                .domain("example.club")
+                .path("/")
+                .secure(true)
+                .http_only(true)
+                .finish();
+            resp.header(&cookie)
+                .raw_header("Authorization", auth);
+        } else {
+            resp.raw_header("Authorization", auth_from_request(&request).unwrap());
+        }
+
+        resp.ok()
     }
 }
 
@@ -93,8 +136,10 @@ fn user_validate(user: &String, pass: &String, host: &String) -> bool {
 }
 
 #[get("/validate")]
-pub fn validate(_auth: Auth) -> &'static str {
-    "Authorized"
+pub fn validate(auth: Auth) -> Auth {
+    // validate sends custom response headers
+    // does not need to send any content, as it is ignored by nginx anyway
+    auth
 }
 
 #[get("/")]
@@ -125,21 +170,7 @@ pub fn validate_login(input: LenientForm<AuthUser>) -> Redirect {
     println!("Validating Login: {}, {}", &input.user, &input.host);
 
     if user_validate(&input.user, &input.pass, &input.host) {
-        // Parsing redirect URL to include HTTP basic auth in header
-        let redirect = String::from(&input.redirect);
-        let parse = Uri::parse(&redirect).unwrap();
-        let parsed = parse.absolute().unwrap();
-
-        // {scheme}://{user}:{pass}@{host}/{path}
-        let build_uri = format!("{}://{}:{}@{}{}",
-            parsed.scheme(),
-            &input.user,
-            &input.pass,
-            parsed.authority().unwrap().host(),
-            parsed.origin().unwrap_or(&Origin::parse("/").unwrap()).path());
-        let auth_uri = Absolute::parse(&build_uri).unwrap().to_string();
-
-        Redirect::to(auth_uri)
+        Redirect::to(String::from(&input.redirect))
     } else {
         Redirect::to(uri!(login: url = &input.redirect, error = "Invalid Login"))
     }
@@ -150,4 +181,10 @@ pub fn logout() -> Template {
     let mut data = HashMap::new();
     data.insert("foo", "bar");
     Template::render("logout", data)
+}
+
+#[catch(401)]
+pub fn unauthorized(req: &Request) -> String {
+    println!("Auth request failed {:?}", req.headers());
+    String::from("Unauthorized User")
 }

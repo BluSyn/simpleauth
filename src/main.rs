@@ -33,7 +33,8 @@ fn main() -> Result<(), ioError> {
         .mount("/",
             routes![app::index, app::validate,
             app::login, app::validate_login, app::logout]
-        ).launch();
+        )
+        .register(catchers![app::unauthorized]).launch();
 
     Ok(())
 }
