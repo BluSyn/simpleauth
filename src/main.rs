@@ -12,6 +12,7 @@
 #[macro_use]
 extern crate rocket;
 extern crate rocket_contrib;
+extern crate base64;
 
 #[macro_use]
 extern crate lazy_static;
