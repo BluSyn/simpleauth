@@ -14,6 +14,8 @@ use rocket::http::hyper::header::Basic;
 
 use rocket_contrib::templates::Template;
 
+use base64::{encode_config as b64_encode, URL_SAFE};
+
 pub mod config;
 
 pub struct Auth(&'static str);
@@ -40,6 +42,13 @@ fn auth_from_request(request: &Request) -> Option<String> {
     } else {
         None
     }
+}
+
+// Encode user/pass login as HTTP Authorization string
+// (Eg, "Basic base64<user:pass>")
+fn auth_encode_string(user: &str, pass: &str) -> String {
+    let b64 = b64_encode(format!("{}:{}", &user, &pass), URL_SAFE);
+    format!("Basic {}", &b64)
 }
 
 // Implement custom guard for validate request
@@ -69,19 +78,8 @@ impl<'a> Responder<'a> for Auth {
     fn respond_to(self, request: &Request) -> response::Result<'a> {
         let mut resp = Response::build();
 
-        // Set cookie if it does not exist
-        if request.cookies().get(COOKIE_NAME).is_none() {
-            let auth = String::from(request.headers().get_one("authorization").unwrap());
-            let cookie = Cookie::build(COOKIE_NAME, auth.clone())
-                .domain("example.club")
-                .path("/")
-                .secure(true)
-                .http_only(true)
-                .finish();
-            resp.header(&cookie)
-                .raw_header("Authorization", auth);
-        } else {
-            resp.raw_header("Authorization", auth_from_request(&request).unwrap());
+        if let Some(auth_string) = auth_from_request(&request) {
+            resp.raw_header("Authorization", auth_string);
         }
 
         resp.ok()
@@ -166,10 +164,22 @@ pub fn login(url: String, error: Option<String>) -> Template {
 }
 
 #[post("/login", data = "<input>")]
-pub fn validate_login(input: LenientForm<AuthUser>) -> Redirect {
+pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Redirect {
     println!("Validating Login: {}, {}", &input.user, &input.host);
 
     if user_validate(&input.user, &input.pass, &input.host) {
+        // Set cookie on login
+        let auth_encode = auth_encode_string(&input.user.as_str(), &input.pass.as_str());
+        let cookie = Cookie::build(COOKIE_NAME, auth_encode)
+            .domain(input.host.clone())
+            .path("/")
+            .secure(true)
+            .http_only(true)
+            .finish();
+        // TODO: Private cookies?
+        // cookies.add_private(cookie);
+        cookies.add(cookie);
+
         Redirect::to(String::from(&input.redirect))
     } else {
         Redirect::to(uri!(login: url = &input.redirect, error = "Invalid Login"))
