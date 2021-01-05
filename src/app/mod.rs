@@ -15,6 +15,7 @@ use rocket::http::hyper::header::Basic;
 use rocket_contrib::templates::Template;
 
 pub mod config;
+use config::AUTHS;
 
 static COOKIE_NAME: &str = "simple-auth";
 
@@ -109,25 +110,15 @@ impl<'a> Responder<'a> for Auth {
 }
 
 fn user_validate(user: &String, pass: &String, host: &String) -> bool {
-    // Parse host domain
-    // magic.simple.foo.example.club -> example.club
-    // TODO: This is fairly dumb manipulation, should make this more robust
-    let host_url: Vec<&str> = host.rsplitn(3, ".").collect();
-    let mut domain_part = String::from("");
-    if host_url.get(1).is_some() {
-        domain_part.push_str(host_url[1]);
-        domain_part.push_str(".");
-    }
-    domain_part.push_str(host_url[0]);
-
-    if user.as_str() == "admin"
-        && pass.as_str() == "pass123"
-        && domain_part.as_str() == "example.club" {
-        println!("Valid Auth: {} ({} / {})", &user, &host, &domain_part);
-        return true;
+    // Check for host domain in auth settings
+    if let Some(creds) = AUTHS.get(host.as_str()) {
+        if creds == &(user.as_str(), pass.as_str()) {
+            println!("Valid Auth: {} ({} / {})", &user, &host, &host);
+            return true;
+        }
     }
 
-    println!("Invalid Auth: {} ({} / {})", &user, &host, &domain_part);
+    println!("Invalid Auth: {} ({} / {})", &user, &host, &host);
     false
 }
 

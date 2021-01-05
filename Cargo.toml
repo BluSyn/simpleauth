@@ -11,6 +11,7 @@ lazy_static = "1.4.0"
 structopt = "0.3"
 rocket = "0.4.6"
 base64 = "0.13.0"
+toml = "0.5.8"
 
 [dependencies.rocket_contrib]
 version = "0.4.6"

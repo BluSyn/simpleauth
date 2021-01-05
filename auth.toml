@@ -1,0 +1,14 @@
+[[login]]
+domain = "test.example.com"
+name = "someuser"
+pass = "testing123"
+
+[[login]]
+domain = "foo.bar"
+name = "foo"
+pass = "bar"
+
+[[login]]
+domain = "domain.localhost"
+name = "local"
+pass = "pass"
