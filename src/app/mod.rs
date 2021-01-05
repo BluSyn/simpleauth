@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use base64::{encode_config as b64_encode, URL_SAFE};
 
 use rocket::Outcome;
-use rocket::response::{self, Redirect, Response, Responder};
+use rocket::response::{self, status, Redirect, Response, Responder};
 use rocket::request::{self, Request, FromRequest, FromForm, LenientForm};
 use rocket::http::{Status, Cookie, Cookies};
 use rocket::http::uri::Uri;
@@ -39,16 +39,22 @@ pub struct AuthUser {
 // or from previously set http cookie (COOKIE_NAME)
 fn auth_from_request(request: &Request) -> Option<String> {
     let head = request.headers();
-    let host = head.get_one("host").unwrap();
+
+    // Host is required, or cant process request
+    let host = match head.get_one("host") {
+        Some(h) => h,
+        None => return None
+    };
+
     let auth = head.get_one("authorization");
     let name = format!("{}_{}", COOKIE_NAME, &host);
     let mut cookies = request.cookies();
     let auth_cookie = cookies.get_private(&name.as_str());
 
-    if auth.is_some() {
-        Some(String::from(auth.unwrap()))
-    } else if auth_cookie.is_some() {
-        Some(String::from(auth_cookie.unwrap().value()))
+    if let Some(a) = auth {
+        Some(String::from(a))
+    } else if let Some(acookie) = auth_cookie {
+        Some(String::from(acookie.value()))
     } else {
         None
     }
@@ -71,7 +77,9 @@ fn auth_validate(host: String, input: String) -> bool {
 
     // Validate base64 encoded value matches accepted logins
     if let Ok(basic) = Basic::from_str(auth_header[1]) {
-        return user_validate(&basic.username, &basic.password.unwrap(), &host);
+        if let Some(password) = &basic.password {
+            return user_validate(&basic.username, &password, &host);
+        }
     }
 
     false
@@ -141,16 +149,23 @@ pub fn index() -> Template {
 }
 
 #[get("/login?<url>&<error>")]
-pub fn login(url: String, error: Option<String>) -> Template {
-    let mut data = HashMap::new();
+pub fn login(url: String, error: Option<String>) -> Result<Template, status::BadRequest<&'static str>> {
+    let mut data: HashMap<&str, &str> = HashMap::new();
 
     // Parse redirect URL into host name
-    // TODO: Very fragile and prone to breaking
-    // need to add peroper error handling
-    let parse = Uri::parse(&url).unwrap();
-    let host = parse.absolute().unwrap()
-        .authority().unwrap()
-        .host();
+    // Handle fallback error cases gracefully
+    let err = Err(status::BadRequest(Some("Invalid URI")));
+    let parse = match Uri::parse(&url) {
+        Ok(v) => v,
+        Err(_) => return err
+    };
+    let host = match parse.absolute() {
+        Some(a) => match a.authority() {
+            Some(h) => h.host(),
+            None => return err
+        },
+        None => return err
+    };
 
     data.insert("host", host);
     data.insert("redirect", url.as_str());
@@ -160,7 +175,7 @@ pub fn login(url: String, error: Option<String>) -> Template {
     }
 
     // Values to render: url, urlHost
-    Template::render("login", &data)
+    Ok(Template::render("login", &data))
 }
 
 #[post("/login", data = "<input>")]
@@ -192,10 +207,10 @@ pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Red
 
         cookies.add_private(cookie);
 
-        Redirect::to(String::from(&input.redirect))
-    } else {
-        Redirect::to(uri!(login: url = &input.redirect, error = "Invalid Login"))
+        return Redirect::to(String::from(&input.redirect));
     }
+
+    Redirect::to(uri!(login: url = &input.redirect, error = "Invalid Login"))
 }
 
 #[get("/logout")]

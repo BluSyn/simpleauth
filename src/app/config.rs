@@ -53,11 +53,10 @@ fn parse_auth_config(data: &Table) -> HashMap<&str, (&str, &str)> {
     let mut domains: HashMap<&str, (&str, &str)> = HashMap::new();
     let logins = data.get("login").unwrap().as_array().unwrap();
 
-    // TODO: Find more efficient method of compressing this object
-    // without so many branches, without adding complicated error handling
+    // TODO: Find more efficient method of compressing this object?
+    // without so many branches / adding complicated error handling
     logins.iter().for_each(|table| {
-        if table.is_table() {
-            let data = table.as_table().unwrap();
+        if let Some(data) = table.as_table() {
             if data.contains_key("name") &&
                 data.contains_key("pass") &&
                 data.contains_key("domain") {
