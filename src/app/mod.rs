@@ -38,9 +38,12 @@ pub struct AuthUser {
 // Get auth string can come from Authorization HTTP header
 // or from previously set http cookie (COOKIE_NAME)
 fn auth_from_request(request: &Request) -> Option<String> {
-    let auth = request.headers().get_one("authorization");
+    let head = request.headers();
+    let host = head.get_one("host").unwrap();
+    let auth = head.get_one("authorization");
+    let name = format!("{}_{}", COOKIE_NAME, &host);
     let mut cookies = request.cookies();
-    let auth_cookie = cookies.get_private(COOKIE_NAME);
+    let auth_cookie = cookies.get_private(&name.as_str());
 
     if auth.is_some() {
         Some(String::from(auth.unwrap()))
@@ -178,7 +181,8 @@ pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Red
 
         // Set cookie on login
         let auth_encode = auth_encode_string(&input.user.as_str(), &input.pass.as_str());
-        let cookie = Cookie::build(COOKIE_NAME, auth_encode)
+        let name = format!("{}_{}", COOKIE_NAME, &input.host);
+        let cookie = Cookie::build(name, auth_encode)
             .domain(domain_part)
             .path("/")
             .secure(true)

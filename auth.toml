@@ -9,6 +9,6 @@ name = "foo"
 pass = "bar"
 
 [[login]]
-domain = "domain.localhost"
+domain = "localhost"
 name = "local"
 pass = "pass"
