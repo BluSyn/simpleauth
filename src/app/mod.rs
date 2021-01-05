@@ -171,7 +171,7 @@ pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Red
             .domain(input.host.clone())
             .path("/")
             .secure(true)
-            .same_site(rocket::http::SameSite::Strict)
+            .same_site(rocket::http::SameSite::Lax)
             .http_only(true)
             .finish();
 
