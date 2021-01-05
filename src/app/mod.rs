@@ -169,7 +169,7 @@ pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Red
 
     if user_validate(&input.user, &input.pass, &input.host) {
         // Parse host domain
-        // magic.simple.foo.example.club -> example.club
+        // magic.simple.foo.example.domain -> example.domain
         // TODO: This is fairly dumb manipulation, should make this more robust
         let host_url: Vec<&str> = input.host.rsplitn(3, ".").collect();
         let mut domain_part = String::from("");
