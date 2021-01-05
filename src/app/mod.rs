@@ -165,13 +165,24 @@ pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Red
     println!("Validating Login: {}, {}", &input.user, &input.host);
 
     if user_validate(&input.user, &input.pass, &input.host) {
+        // Parse host domain
+        // magic.simple.foo.example.club -> example.club
+        // TODO: This is fairly dumb manipulation, should make this more robust
+        let host_url: Vec<&str> = input.host.rsplitn(3, ".").collect();
+        let mut domain_part = String::from("");
+        if host_url.get(1).is_some() {
+            domain_part.push_str(host_url[1]);
+            domain_part.push_str(".");
+        }
+        domain_part.push_str(host_url[0]);
+
         // Set cookie on login
         let auth_encode = auth_encode_string(&input.user.as_str(), &input.pass.as_str());
         let cookie = Cookie::build(COOKIE_NAME, auth_encode)
-            .domain(input.host.clone())
+            .domain(domain_part)
             .path("/")
             .secure(true)
-            .same_site(rocket::http::SameSite::Lax)
+            .same_site(rocket::http::SameSite::Strict)
             .http_only(true)
             .finish();
 
