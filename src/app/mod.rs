@@ -18,7 +18,7 @@ use rocket_contrib::templates::Template;
 pub mod config;
 use config::AUTHS;
 
-static COOKIE_NAME: &str = "simple-auth";
+static COOKIE_NAME: &str = "simpauth";
 
 pub struct Auth(&'static str);
 #[derive(Debug)]
