@@ -11,6 +11,7 @@ use rocket::Outcome;
 use rocket::response::{self, Redirect, Response, Responder};
 use rocket::request::{self, Request, FromRequest, FromForm, LenientForm};
 use rocket::http::{Status, Cookie, Cookies};
+use rocket::http::uri::Uri;
 use rocket::http::hyper::header::Basic;
 use rocket_contrib::templates::Template;
 
@@ -113,12 +114,12 @@ fn user_validate(user: &String, pass: &String, host: &String) -> bool {
     // Check for host domain in auth settings
     if let Some(creds) = AUTHS.get(host.as_str()) {
         if creds == &(user.as_str(), pass.as_str()) {
-            println!("Valid Auth: {} ({} / {})", &user, &host, &host);
+            println!("Valid Auth: {} ({})", &user, &host);
             return true;
         }
     }
 
-    println!("Invalid Auth: {} ({} / {})", &user, &host, &host);
+    println!("Invalid Auth: {} ({})", &user, &host);
     false
 }
 
@@ -140,8 +141,15 @@ pub fn index() -> Template {
 pub fn login(url: String, error: Option<String>) -> Template {
     let mut data = HashMap::new();
 
-    // TODO: Based on request headers
-    data.insert("host", "example.club");
+    // Parse redirect URL into host name
+    // TODO: Very fragile and prone to breaking
+    // need to add peroper error handling
+    let parse = Uri::parse(&url).unwrap();
+    let host = parse.absolute().unwrap()
+        .authority().unwrap()
+        .host();
+
+    data.insert("host", host);
     data.insert("redirect", url.as_str());
 
     if let Some(msg) = &error {
