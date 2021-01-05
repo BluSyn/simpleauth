@@ -125,7 +125,6 @@ fn user_validate(user: &String, pass: &String, host: &String) -> bool {
     // Check for host domain in auth settings
     if let Some(creds) = AUTHS.get(host.as_str()) {
         if creds == &(user.as_str(), pass.as_str()) {
-            println!("Valid Auth: {} ({})", &user, &host);
             return true;
         }
     }
@@ -180,7 +179,7 @@ pub fn login(url: String, error: Option<String>) -> Result<Template, status::Bad
 
 #[post("/login", data = "<input>")]
 pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Redirect {
-    println!("Validating Login: {}, {}", &input.user, &input.host);
+    println!("Validating Login: {} ({})", &input.user, &input.host);
 
     if user_validate(&input.user, &input.pass, &input.host) {
         // Parse host domain
@@ -222,6 +221,7 @@ pub fn logout() -> Template {
 
 #[catch(401)]
 pub fn unauthorized(req: &Request) -> String {
-    println!("Auth request failed {:?}", req.headers());
+    let head = req.headers();
+    println!("Auth request failed ({:?})", head.get_one("host"));
     String::from("Unauthorized User")
 }
