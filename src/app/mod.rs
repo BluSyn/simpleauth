@@ -31,8 +31,7 @@ pub enum AuthError {
 pub struct AuthUser {
     user: String,
     pass: String,
-    host: String,
-    redirect: String,
+    url: String,
 }
 
 // Get auth string can come from Authorization HTTP header
@@ -133,6 +132,20 @@ fn user_validate(user: &String, pass: &String, host: &String) -> bool {
     false
 }
 
+// Validates and parses url into raw hostname
+fn parse_url_host(url: &String) -> Option<String> {
+    match Uri::parse(&url) {
+        Ok(p) => match p.absolute() {
+            Some(a) => match a.authority() {
+                Some(h) => Some(String::from(h.host())),
+                None => None
+            },
+            None => None
+        },
+        Err(_) => None
+    }
+}
+
 // Note: validate sends custom response headers
 // does not need to send any content, as it is ignored by nginx anyway
 #[get("/validate")]
@@ -147,45 +160,44 @@ pub fn index() -> Template {
     Template::render("index", data)
 }
 
-#[get("/login?<url>&<error>")]
-pub fn login(url: String, error: Option<String>) -> Result<Template, status::BadRequest<&'static str>> {
+#[get("/login?<url>")]
+pub fn login(url: String) -> Result<Template, status::BadRequest<&'static str>> {
     let mut data: HashMap<&str, &str> = HashMap::new();
 
-    // Parse redirect URL into host name
-    // Handle fallback error cases gracefully
-    let err = Err(status::BadRequest(Some("Invalid URI")));
-    let parse = match Uri::parse(&url) {
-        Ok(v) => v,
-        Err(_) => return err
-    };
-    let host = match parse.absolute() {
-        Some(a) => match a.authority() {
-            Some(h) => h.host(),
-            None => return err
-        },
-        None => return err
-    };
-
-    data.insert("host", host);
-    data.insert("redirect", url.as_str());
-
-    if let Some(msg) = &error {
-        data.insert("error", msg);
+    // Validate redirect URL
+    if parse_url_host(&url).is_none() {
+        return Err(status::BadRequest(Some("Invalid Hostname")));
     }
+
+    data.insert("url", url.as_str());
 
     // Values to render: url, urlHost
     Ok(Template::render("login", &data))
 }
 
 #[post("/login", data = "<input>")]
-pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Redirect {
-    println!("Validating Login: {} ({})", &input.user, &input.host);
+pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Result<Redirect, Template> {
+    // Valdate input URL
+    let host = match parse_url_host(&input.url) {
+        Some(h) => h,
+        None => {
+            println!("Invalid login hostname: {}", &input.url);
 
-    if user_validate(&input.user, &input.pass, &input.host) {
+            let mut data: HashMap<&str, &str> = HashMap::new();
+            data.insert("url", &input.url);
+            data.insert("error", "Invalid Login URL");
+
+            return Err(Template::render("login", &data));
+        }
+    };
+
+    println!("Validating Login: {} ({})", &input.user, &host);
+
+    if user_validate(&input.user, &input.pass, &host) {
         // Parse host domain
         // magic.simple.foo.example.domain -> example.domain
         // TODO: This is fairly dumb manipulation, should make this more robust
-        let host_url: Vec<&str> = input.host.rsplitn(3, ".").collect();
+        let host_url: Vec<&str> = host.rsplitn(3, ".").collect();
         let mut domain_part = String::from("");
         if host_url.get(1).is_some() {
             domain_part.push_str(host_url[1]);
@@ -195,7 +207,7 @@ pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Red
 
         // Set cookie on login
         let auth_encode = auth_encode_string(&input.user.as_str(), &input.pass.as_str());
-        let name = format!("{}_{}", COOKIE_NAME, &input.host);
+        let name = format!("{}_{}", COOKIE_NAME, &host);
         let cookie = Cookie::build(name, auth_encode)
             .domain(domain_part)
             .path("/")
@@ -206,10 +218,14 @@ pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Red
 
         cookies.add_private(cookie);
 
-        return Redirect::to(String::from(&input.redirect));
+        return Ok(Redirect::to(String::from(&input.url)));
     }
 
-    Redirect::to(uri!(login: url = &input.redirect, error = "Invalid Login"))
+    let mut data: HashMap<&str, &str> = HashMap::new();
+    data.insert("url", &input.url);
+    data.insert("error", "Invalid Login");
+
+    Err(Template::render("login", &data))
 }
 
 #[get("/logout")]
