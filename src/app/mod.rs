@@ -176,18 +176,18 @@ pub fn login(url: String) -> Result<Template, status::BadRequest<&'static str>> 
 }
 
 #[post("/login", data = "<input>")]
-pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Result<Redirect, Template> {
+pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Result<Redirect, status::Unauthorized<Template>> {
     // Valdate input URL
     let host = match parse_url_host(&input.url) {
         Some(h) => h,
         None => {
             println!("Invalid login hostname: {}", &input.url);
 
-            let mut data: HashMap<&str, &str> = HashMap::new();
-            data.insert("url", &input.url);
-            data.insert("error", "Invalid Login URL");
-
-            return Err(Template::render("login", &data));
+            let data: HashMap<&str, &str> = vec![
+                ("url", input.url.as_str()),
+                ("error", "Invalid Login URL")
+            ].iter().copied().collect();
+            return Err(status::Unauthorized(Some(Template::render("login", &data))));
         }
     };
 
@@ -221,23 +221,26 @@ pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Res
         return Ok(Redirect::to(String::from(&input.url)));
     }
 
-    let mut data: HashMap<&str, &str> = HashMap::new();
-    data.insert("url", &input.url);
-    data.insert("error", "Invalid Login");
+    let data: HashMap<&str, &str> = vec![
+        ("url", input.url.as_str()),
+        ("error", "Invalid Login")
+    ].iter().copied().collect();
 
-    Err(Template::render("login", &data))
+    Err(status::Unauthorized(Some(Template::render("login", &data))))
 }
 
+// TODO: Logout not currently supported
+// Unclear how best to handle this with HTTP Auth
 #[get("/logout")]
 pub fn logout() -> Template {
-    let mut data = HashMap::new();
-    data.insert("foo", "bar");
+    let data: HashMap<&str, &str> = HashMap::new();
     Template::render("logout", data)
 }
 
 #[catch(401)]
-pub fn unauthorized(req: &Request) -> String {
-    let head = req.headers();
-    println!("Auth request failed ({:?})", head.get_one("host"));
-    String::from("Unauthorized User")
+pub fn unauthorized<'a>(_req: &Request) -> &'a str {
+    // TODO: Debug-mode logging?
+    // let head = req.headers();
+    // println!("Auth request failed ({:?})", head.get_one("host"));
+    "Unauthorized"
 }
