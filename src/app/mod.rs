@@ -1,18 +1,14 @@
-/**
- * Main app routes
- */
-
-use std::str::FromStr;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use base64::{encode_config as b64_encode, URL_SAFE};
 
-use rocket::Outcome;
-use rocket::response::{self, status, Redirect, Response, Responder};
-use rocket::request::{self, Request, FromRequest, FromForm, LenientForm};
-use rocket::http::{Status, Cookie, Cookies};
-use rocket::http::uri::Uri;
 use rocket::http::hyper::header::Basic;
+use rocket::http::uri::Uri;
+use rocket::http::{Cookie, Cookies, Status};
+use rocket::request::{self, FromForm, FromRequest, LenientForm, Request};
+use rocket::response::{self, status, Redirect, Responder, Response};
+use rocket::Outcome;
 use rocket_contrib::templates::Template;
 
 pub mod config;
@@ -42,7 +38,7 @@ fn auth_from_request(request: &Request) -> Option<String> {
     // Host is required, or cant process request
     let host = match head.get_one("host") {
         Some(h) => h,
-        None => return None
+        None => return None,
     };
 
     let auth = head.get_one("authorization");
@@ -66,7 +62,7 @@ fn auth_encode_string(user: &str, pass: &str) -> String {
     format!("Basic {}", &b64)
 }
 
-// TODO: Validate "host" header and use in cominbation with user/pass
+// Validate host + auth combo
 fn auth_validate(host: String, input: String) -> bool {
     // Validate "Basic" auth type is used (Bearer not supported)
     let auth_header: Vec<&str> = input.split(' ').collect();
@@ -138,11 +134,11 @@ fn parse_url_host(url: &String) -> Option<String> {
         Ok(p) => match p.absolute() {
             Some(a) => match a.authority() {
                 Some(h) => Some(String::from(h.host())),
-                None => None
+                None => None,
             },
-            None => None
+            None => None,
         },
-        Err(_) => None
+        Err(_) => None,
     }
 }
 
@@ -176,17 +172,21 @@ pub fn login(url: String) -> Result<Template, status::BadRequest<&'static str>> 
 }
 
 #[post("/login", data = "<input>")]
-pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Result<Redirect, status::Unauthorized<Template>> {
+pub fn validate_login(
+    mut cookies: Cookies,
+    input: LenientForm<AuthUser>,
+) -> Result<Redirect, status::Unauthorized<Template>> {
     // Valdate input URL
     let host = match parse_url_host(&input.url) {
         Some(h) => h,
         None => {
             println!("Invalid login hostname: {}", &input.url);
 
-            let data: HashMap<&str, &str> = vec![
-                ("url", input.url.as_str()),
-                ("error", "Invalid Login URL")
-            ].iter().copied().collect();
+            let data: HashMap<&str, &str> =
+                vec![("url", input.url.as_str()), ("error", "Invalid Login URL")]
+                    .iter()
+                    .copied()
+                    .collect();
             return Err(status::Unauthorized(Some(Template::render("login", &data))));
         }
     };
@@ -221,10 +221,10 @@ pub fn validate_login(mut cookies: Cookies, input: LenientForm<AuthUser>) -> Res
         return Ok(Redirect::to(String::from(&input.url)));
     }
 
-    let data: HashMap<&str, &str> = vec![
-        ("url", input.url.as_str()),
-        ("error", "Invalid Login")
-    ].iter().copied().collect();
+    let data: HashMap<&str, &str> = vec![("url", input.url.as_str()), ("error", "Invalid Login")]
+        .iter()
+        .copied()
+        .collect();
 
     Err(status::Unauthorized(Some(Template::render("login", &data))))
 }

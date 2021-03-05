@@ -1,33 +1,29 @@
-/**
- * Simpleauth config
- */
-
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
-use std::collections::HashMap;
 
-use toml::value::Table;
 use structopt::StructOpt;
+use toml::value::Table;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "simpleauth")]
 pub struct Config {
     //// Host to listen to
-    #[structopt(long, short, default_value="localhost")]
+    #[structopt(long, short, default_value = "localhost")]
     pub host: String,
 
-	//// Location of config file
-	#[structopt(short, long, default_value="./auth.toml")]
-	pub config: String,
+    //// Location of config file
+    #[structopt(short, long, default_value = "./auth.toml")]
+    pub config: String,
 
     //// Port to listen to
-    #[structopt(long, short, default_value="3141")]
+    #[structopt(long, short, default_value = "3141")]
     pub port: u16,
 
     //// Verbose log output
     #[structopt(long, short)]
-    pub verbose: bool
+    pub verbose: bool,
 }
 
 lazy_static! {
@@ -40,13 +36,11 @@ lazy_static! {
 }
 
 fn get_auth_config(file: &PathBuf) -> Table {
-    let mut f = File::open(file)
-        .expect("Could not open specified config file");
+    let mut f = File::open(file).expect("Could not open specified config file");
     let mut buffer = String::new();
     f.read_to_string(&mut buffer)
         .expect("Could not read specified config file");
-    toml::from_str(&buffer.as_str())
-        .expect("Failed to parse config file (invalid toml?)")
+    toml::from_str(&buffer.as_str()).expect("Failed to parse config file (invalid toml?)")
 }
 
 fn parse_auth_config(data: &Table) -> HashMap<&str, (&str, &str)> {
@@ -57,12 +51,15 @@ fn parse_auth_config(data: &Table) -> HashMap<&str, (&str, &str)> {
     // without so many branches / adding complicated error handling
     logins.iter().for_each(|table| {
         if let Some(data) = table.as_table() {
-            if data.contains_key("name") &&
-                data.contains_key("pass") &&
-                data.contains_key("domain") {
-                domains.insert(&data.get("domain").unwrap().as_str().unwrap(),
-                    (&data.get("name").unwrap().as_str().unwrap(),
-                    &data.get("pass").unwrap().as_str().unwrap()));
+            if data.contains_key("name") && data.contains_key("pass") && data.contains_key("domain")
+            {
+                domains.insert(
+                    &data.get("domain").unwrap().as_str().unwrap(),
+                    (
+                        &data.get("name").unwrap().as_str().unwrap(),
+                        &data.get("pass").unwrap().as_str().unwrap(),
+                    ),
+                );
             }
         }
     });

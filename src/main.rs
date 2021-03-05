@@ -8,7 +8,6 @@
  * Compatible with nginx auth_request
  */
 
-
 #[macro_use]
 extern crate rocket;
 #[macro_use]
@@ -22,16 +21,25 @@ use app::config::CFG;
 
 fn main() -> Result<(), std::io::Error> {
     let mut rocket_conf = RocketConfig::active().unwrap();
-    rocket_conf.set_address(CFG.host.as_str()).expect("Unable to bind to host provided");
+    rocket_conf
+        .set_address(CFG.host.as_str())
+        .expect("Unable to bind to host provided");
     rocket_conf.set_port(CFG.port);
 
     rocket::custom(rocket_conf)
         .attach(Template::fairing())
-        .mount("/",
-            routes![app::index, app::validate,
-            app::login, app::validate_login, app::logout]
+        .mount(
+            "/",
+            routes![
+                app::index,
+                app::validate,
+                app::login,
+                app::validate_login,
+                app::logout
+            ],
         )
-        .register(catchers![app::unauthorized]).launch();
+        .register(catchers![app::unauthorized])
+        .launch();
 
     Ok(())
 }
