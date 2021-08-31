@@ -11,7 +11,7 @@ use toml::value::Table;
 #[structopt(name = "simpleauth")]
 pub struct Config {
     //// Host to listen to
-    #[structopt(long, short, default_value = "127.0.0.1")]
+    #[structopt(long, short, default_value = "0.0.0.0")]
     pub host: String,
 
     //// Location of config file
