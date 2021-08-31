@@ -5,7 +5,7 @@ use base64::{decode as b64_decode, encode_config as b64_encode, URL_SAFE};
 use hyper_old::error::Error as HyperError;
 use hyper_old::header::Basic;
 use rocket::form::{Form, Lenient};
-use rocket::http::uri::{Origin, Uri};
+use rocket::http::uri::Absolute;
 use rocket::http::{Cookie, CookieJar, Status};
 use rocket::outcome::Outcome;
 use rocket::request::{self, FromRequest, Request};
@@ -160,12 +160,9 @@ fn user_validate(user: &String, pass: &String, host: &String) -> bool {
 
 // Validates and parses url into raw hostname
 fn parse_url_host(url: &String) -> Option<String> {
-    match Uri::parse::<Origin>(&url) {
-        Ok(p) => match p.absolute() {
-            Some(a) => match a.authority() {
-                Some(h) => Some(String::from(h.host())),
-                None => None,
-            },
+    match Absolute::parse(&url) {
+        Ok(p) => match p.authority() {
+            Some(h) => Some(String::from(h.host())),
             None => None,
         },
         Err(_) => None,
