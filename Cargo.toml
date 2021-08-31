@@ -1,19 +1,22 @@
 [package]
 name = "simpleauth"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["BluSyn <blusyn@protonmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lazy_static = "1.4.0"
+lazy_static = "1.4"
 structopt = "0.3"
-rocket = "0.4.6"
-base64 = "0.13.0"
-toml = "0.5.8"
 
-[dependencies.rocket_contrib]
-version = "0.4.6"
-default-features = false
-features = ["handlebars_templates"]
+## TODO: This is needed for HTTP Basic Auth support
+## Which was removed in later versions of hyper/rocket
+## Eventually can replace with "headers" package,
+## but for now this is incompatible
+hyper_old = { package = "hyper", version = "0.11.27" }
+
+base64 = "0.13"
+toml = "0.5"
+rocket = { version = "0.5.0-rc.1", features = ["secrets"] }
+rocket_dyn_templates = { version = "0.1.0-rc.1", features = ["handlebars"] }

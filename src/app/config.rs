@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
@@ -10,7 +11,7 @@ use toml::value::Table;
 #[structopt(name = "simpleauth")]
 pub struct Config {
     //// Host to listen to
-    #[structopt(long, short, default_value = "localhost")]
+    #[structopt(long, short, default_value = "127.0.0.1")]
     pub host: String,
 
     //// Location of config file
@@ -29,10 +30,9 @@ pub struct Config {
 lazy_static! {
     pub static ref CFG: Config = Config::from_args();
     pub static ref CFILE: PathBuf = PathBuf::from(&CFG.config);
-    // let raw_auths = get_auth_config(&*CFILE);
-    // let auths = parse_auth_config(&raw_auths);
     static ref RAW_AUTHS: Table = get_auth_config(&*CFILE);
-    pub static ref AUTHS: HashMap<&'static str, (&'static str, &'static str)> = parse_auth_config(&RAW_AUTHS);
+    pub static ref AUTHS: HashMap<&'static str, (&'static str, &'static str)> =
+        parse_auth_config(&RAW_AUTHS);
 }
 
 fn get_auth_config(file: &PathBuf) -> Table {

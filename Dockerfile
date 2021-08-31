@@ -1,9 +1,7 @@
 ### BUILDING APP ###
-# FROM rust:1.49-alpine as build
 FROM rust:latest as build
 
 # Minimal work env
-RUN rustup default nightly && rustup set profile minimal
 WORKDIR /app
 COPY . .
 
@@ -11,7 +9,6 @@ COPY . .
 RUN cargo build --release
 
 ### RUNNING APP ###
-#FROM alpine:latest
 FROM debian:buster-slim
 ENTRYPOINT ["/app/entrypoint.sh"]
 EXPOSE 3141

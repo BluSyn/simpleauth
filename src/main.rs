@@ -1,5 +1,3 @@
-#![feature(decl_macro)]
-
 /**
  * Simpleauth
  *
@@ -10,36 +8,30 @@
 
 #[macro_use]
 extern crate rocket;
-#[macro_use]
-extern crate lazy_static;
 
 use rocket::config::Config as RocketConfig;
-use rocket_contrib::templates::Template;
+use rocket_dyn_templates::Template;
+use std::net::IpAddr;
 
 mod app;
 use app::config::CFG;
 
-fn main() -> Result<(), std::io::Error> {
-    let mut rocket_conf = RocketConfig::active().unwrap();
-    rocket_conf
-        .set_address(CFG.host.as_str())
-        .expect("Unable to bind to host provided");
-    rocket_conf.set_port(CFG.port);
+#[launch]
+async fn rocket() -> _ {
+    let conf = RocketConfig::figment()
+        .merge((
+            "address",
+            CFG.host
+                .parse::<IpAddr>()
+                .expect("Invalid bind IP configured"),
+        ))
+        .merge(("port", CFG.port));
 
-    rocket::custom(rocket_conf)
+    rocket::custom(conf)
         .attach(Template::fairing())
         .mount(
             "/",
-            routes![
-                app::index,
-                app::validate,
-                app::login,
-                app::validate_login,
-                app::logout
-            ],
+            routes![app::validate, app::login, app::validate_login, app::logout],
         )
-        .register(catchers![app::unauthorized])
-        .launch();
-
-    Ok(())
+        .register("/", catchers![app::unauthorized])
 }
