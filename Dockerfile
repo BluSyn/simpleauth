@@ -1,5 +1,5 @@
 ### BUILDING APP ###
-FROM rust:latest as build
+FROM rust:1.54 as build
 
 # Minimal work env
 WORKDIR /app
